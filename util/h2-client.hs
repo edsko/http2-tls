@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Main where
 
+import Control.Concurrent
 import Control.Monad
 import qualified Data.ByteString.Char8 as C8
 import Data.IORef
@@ -12,25 +14,22 @@ import System.Console.GetOpt
 import System.Environment
 import System.Exit
 
-import Client
+import Network.HTTP2.Client (Path)
 
-data Options = Options
-    { optKeyLogFile :: Maybe FilePath
-    , optValidate :: Bool
-    , optResumption :: Bool
-    , opt0RTT :: Bool
-    , optNumOfReqs :: Int
-    }
-    deriving (Show)
+import Client
+import Monitor
 
 defaultOptions :: Options
 defaultOptions =
     Options
-        { optKeyLogFile = Nothing
+        { optPerformance = 0
+        , optNumOfReqs = 1
+        , optMonitor = False
+        , optInteractive = False
+        , optKeyLogFile = Nothing
         , optValidate = False
         , optResumption = False
         , opt0RTT = False
-        , optNumOfReqs = 1
         }
 
 usage :: String
@@ -39,6 +38,26 @@ usage = "Usage: h2-client [OPTION] addr port [path]"
 options :: [OptDescr (Options -> Options)]
 options =
     [ Option
+        ['t']
+        ["performance"]
+        (ReqArg (\n o -> o{optPerformance = read n}) "<size>")
+        "measure performance"
+    , Option
+        ['n']
+        ["number-of-requests"]
+        (ReqArg (\n o -> o{optNumOfReqs = read n}) "<n>")
+        "specify the number of requests"
+    , Option
+        ['m']
+        ["monitor"]
+        (NoArg (\opts -> opts{optMonitor = True}))
+        "run thread monitor"
+    , Option
+        ['i']
+        ["interactive"]
+        (NoArg (\o -> o{optInteractive = True}))
+        "enter interactive mode"
+    , Option
         ['l']
         ["key-log-file"]
         (ReqArg (\file o -> o{optKeyLogFile = Just file}) "<file>")
@@ -58,11 +77,6 @@ options =
         ["0rtt"]
         (NoArg (\o -> o{opt0RTT = True}))
         "try sending early data"
-    , Option
-        ['n']
-        ["number-of-requests"]
-        (ReqArg (\n o -> o{optNumOfReqs = read n}) "<n>")
-        "specify the number of requests"
     ]
 
 showUsageAndExit :: String -> IO a
@@ -80,24 +94,25 @@ clientOpts argv =
 main :: IO ()
 main = do
     args <- getArgs
-    (Options{..}, ips) <- clientOpts args
+    (opts, ips) <- clientOpts args
     (host, port, paths) <- case ips of
         [] -> showUsageAndExit usage
         _ : [] -> showUsageAndExit usage
         h : p : [] -> return (h, read p, ["/"])
         h : p : ps -> return (h, read p, C8.pack <$> ps)
+    when (optMonitor opts) $ void $ forkIO $ monitor $ threadDelay 1000000
     ref <- newIORef Nothing
-    let keylog = case optKeyLogFile of
+    let keylog = case optKeyLogFile opts of
             Nothing -> settingsKeyLogger defaultSettings
             Just file -> \msg -> appendFile file (msg ++ "\n")
         settings =
             defaultSettings
-                { settingsValidateCert = optValidate
+                { settingsValidateCert = optValidate opts
                 , settingsKeyLogger = keylog
                 , settingsSessionManager = sessionRef ref
                 }
-    run settings host port $ client optNumOfReqs paths
-    when (optResumption || opt0RTT) $ do
+    run settings host port $ client' opts paths
+    when (optResumption opts || opt0RTT opts) $ do
         mr <- readIORef ref
         case mr of
             Nothing -> do
@@ -106,12 +121,12 @@ main = do
             _ -> do
                 let settings2 =
                         defaultSettings
-                            { settingsValidateCert = optValidate
+                            { settingsValidateCert = optValidate opts
                             , settingsKeyLogger = keylog
                             , settingsWantSessionResume = mr
-                            , settingsUseEarlyData = opt0RTT
+                            , settingsUseEarlyData = opt0RTT opts
                             }
-                run settings2 host port $ client optNumOfReqs paths
+                run settings2 host port $ client opts paths
 
 sessionRef :: IORef (Maybe (SessionID, SessionData)) -> SessionManager
 sessionRef ref =
@@ -120,3 +135,11 @@ sessionRef ref =
             writeIORef ref $ Just (sid, sdata)
             return Nothing
         }
+
+client' :: Options -> [Path] -> Client ()
+client' opts paths sendRequest _aux
+    | optInteractive opts = do
+        let action = client opts paths sendRequest _aux
+        console opts paths action _aux
+        return ()
+    | otherwise = client opts paths sendRequest _aux
