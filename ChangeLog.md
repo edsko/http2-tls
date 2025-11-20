@@ -1,5 +1,10 @@
 # Revision history for http2-tls
 
+## 0.5.0
+
+* The signature of `runTLS` and `runTLSWithSocket` are changed to
+  implement timeout properly.
+
 ## 0.4.9
 
 * Making use of settingsCAStore again.
