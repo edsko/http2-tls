@@ -1,5 +1,13 @@
 # Revision history for http2-tls
 
+## 0.5.2
+
+* Using tls v2.2 and crypton-x509* v1.8.
+
+## 0.5.1
+
+* Using http2 v5.4.
+
 ## 0.5.0
 
 * The signature of `runTLS` and `runTLSWithSocket` are changed to
