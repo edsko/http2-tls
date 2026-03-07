@@ -1,5 +1,9 @@
 # Revision history for http2-tls
 
+## 0.5.3
+
+* Using tls v2.3 and crypton-x509* v1.9.
+
 ## 0.5.2
 
 * Using tls v2.2 and crypton-x509* v1.8.
