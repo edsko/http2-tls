@@ -1,6 +1,6 @@
 cabal-version: >=1.10
 name:          http2-tls
-version:       0.5.2
+version:       0.5.3
 license:       BSD3
 license-file:  LICENSE
 maintainer:    Kazu Yamamoto <kazu@iij.ad.jp>
@@ -38,16 +38,16 @@ library
     build-depends:
         base >=4.9 && <5,
         bytestring >=0.10,
-        crypton-x509-store >=1.8.0 && <1.9,
-        crypton-x509-system >=1.8 && <1.9,
-        crypton-x509-validation >=1.8 && <1.9,
+        crypton-x509-store >=1.9.0 && <1.10,
+        crypton-x509-system >=1.9.0 && <1.10,
+        crypton-x509-validation >=1.9 && <1.10,
         http2 >=5.4 && <5.5,
         network >=3.1.4,
         network-control >=0.1 && <0.2,
         network-run >=0.5 && <0.6,
         recv >=0.1.0 && <0.2,
         time-manager >=0.2 && <0.4,
-        tls >=2.1.10 && <2.3,
+        tls >=2.3.0 && <2.4,
         utf8-string >=1.0 && <1.1
 
 executable h2-client
