@@ -13,6 +13,7 @@ import Network.Socket.BufferPool
 import qualified Network.Socket.ByteString as NSB
 import Network.TLS hiding (HostName)
 import System.IO.Error (isEOFError)
+import qualified System.IO.Error as E
 import qualified System.TimeManager as T
 
 import Network.HTTP2.TLS.Server.Settings
@@ -119,7 +120,7 @@ mkBackend settings sock = do
         Backend
             { backendFlush = return ()
             , backendClose =
-                gracefulClose sock 5000 `E.catch` \(E.SomeException _) -> return ()
+                gracefulClose sock 5000 `E.catchIOError` \_ -> return ()
             , backendSend = send'
             , backendRecv = recvN
             }
