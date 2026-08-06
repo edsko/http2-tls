@@ -1,5 +1,9 @@
 # Revision history for http2-tls
 
+## 0.5.4
+
+* Don't eat an asynchronous exception.
+
 ## 0.5.3
 
 * Using tls v2.3 and crypton-x509* v1.9.
